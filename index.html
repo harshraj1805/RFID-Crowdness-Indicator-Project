@@ -9,92 +9,141 @@
             font-family: Arial, sans-serif;
         }
         .progress-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 20px auto;
-            width: 250px;
+            width: 270px; /* Adjusted width */
+            height: 25px;
+            border: 3px solid black;
+            border-radius: 15px;
+            margin: 10px auto;
+            background-color: #e0e0e0;
+            position: relative;
+            padding: 3px; /* Padding added inside */
+            box-sizing: border-box;
         }
         .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #ddd;
-            border: 2px solid black;
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-        }
-        .progress-fill {
             height: 100%;
-            width: 0%;
-            border-radius: 10px;
+            width: 0;
+            border-radius: 12px;
             transition: width 0.5s ease-in-out;
         }
-        .percentage {
-            margin-left: 10px;
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
             font-weight: bold;
+            color: black;
         }
-        .message {
-            margin-top: 10px;
+        #percentage-text {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        #message {
             font-size: 16px;
             font-weight: bold;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>Number of Peoples Inside</h1>
-    <div class="progress-container">
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <span class="percentage" id="percentage">0%</span>
-    </div>
-    <p class="message" id="crowdMessage">Now you can go there, it's not much crowded!</p>
+    <h1>Number of Peoples Inside: <span id="occupancy">0</span></h1>
     
+    <div class="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+        <span class="progress-text" id="progress-text">0.00%</span>
+    </div>
+
+    <p id="percentage-text">0.00% full</p>  <!-- Total percentage text -->
+    <p id="message">Loading crowd info...</p>
+
+    <canvas id="entryChart"></canvas>
+
     <script>
-        const API_URL = "https://docs.google.com/spreadsheets/d/YOUR_SPREADSHEET_ID/gviz/tq?tqx=out:json"; // Replace with actual Google Sheets URL
-        const MAX_PEOPLE = 20;
+        const API_URL = "https://docs.google.com/spreadsheets/d/1srmt2AA5F_QCiBLcM7lAmo9pln2nhfrW4NnI6OrtfKk/gviz/tq?tqx=out:json"; // Replace with your actual URL
+        const MAX_PEOPLE = 20; // Maximum people limit
 
         async function fetchData() {
             try {
+                console.log("Fetching data...");
                 const response = await fetch(API_URL);
                 let text = await response.text();
-                let json = JSON.parse(text.substring(47, text.length - 2));
-                let rows = json.table.rows;
+                let json = JSON.parse(text.substring(47, text.length - 2)); // Google Sheets fix
 
+                let rows = json.table.rows;
                 let totalOccupancy = 0;
+                let timeIntervals = { "07:00-10:00": 0, "12:00-15:00": 0, "18:00-21:00": 0 };
 
                 rows.forEach(row => {
-                    if (!row.c[0] || !row.c[1]) return; // Skip empty rows
-                    let value = parseInt(row.c[1].v); // Second column: Entry (+1) / Exit (-1)
+                    let time = row.c[0].v;
+                    let value = parseInt(row.c[1].v);
                     totalOccupancy += value;
+
+                    let hours = parseInt(time.split(":")[0]);
+                    if (hours >= 7 && hours < 10) timeIntervals["07:00-10:00"] += value;
+                    if (hours >= 12 && hours < 15) timeIntervals["12:00-15:00"] += value;
+                    if (hours >= 18 && hours < 21) timeIntervals["18:00-21:00"] += value;
                 });
 
+                document.getElementById("occupancy").innerText = totalOccupancy;
                 updateProgressBar(totalOccupancy);
+                updateChart(Object.keys(timeIntervals), Object.values(timeIntervals));
             } catch (error) {
                 console.error("Error fetching data:", error);
+                document.getElementById("message").innerText = "Error fetching data. Check console!";
             }
         }
 
         function updateProgressBar(occupancy) {
-            let percentage = ((occupancy / MAX_PEOPLE) * 100).toFixed(2);
-            let progressBar = document.getElementById("progressFill");
-            let percentageText = document.getElementById("percentage");
-            let crowdMessage = document.getElementById("crowdMessage");
-            
-            progressBar.style.width = percentage + "%";
-            percentageText.innerText = percentage + "%";
+            let percentage = (occupancy / MAX_PEOPLE) * 100;
+            percentage = Math.min(100, Math.max(0, percentage)); // Keep within range
+            let exactPercentage = percentage.toFixed(2) + "%"; // Show decimal values
 
+            let progressBar = document.getElementById("progress-bar");
+            let progressText = document.getElementById("progress-text");
+            let percentageText = document.getElementById("percentage-text");
+            let message = document.getElementById("message");
+
+            progressBar.style.width = percentage + "%";
+            progressText.innerText = exactPercentage;
+            percentageText.innerText = exactPercentage + " full"; // Display total percentage
+
+            // Change color based on occupancy level
             if (percentage < 50) {
                 progressBar.style.backgroundColor = "green";
-                crowdMessage.innerText = "Now you can go there, it's not much crowded!";
-            } else if (percentage < 75) {
+                message.innerText = "Now you can go there, it's not much crowded!";
+            } else if (percentage < 80) {
                 progressBar.style.backgroundColor = "yellow";
-                crowdMessage.innerText = "Moderate crowd, you may want to wait!";
+                message.innerText = "Moderate crowd. You may consider going!";
             } else {
                 progressBar.style.backgroundColor = "red";
-                crowdMessage.innerText = "It's crowded! Better to wait.";
+                message.innerText = "Too crowded! Better to wait.";
             }
+        }
+
+        function updateChart(labels, data) {
+            console.log("Chart Labels:", labels);
+            console.log("Chart Data:", data);
+
+            const ctx = document.getElementById("entryChart").getContext("2d");
+            new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Total Entries",
+                        data: data,
+                        backgroundColor: ["blue", "blue", "blue"]
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: MAX_PEOPLE
+                        }
+                    }
+                }
+            });
         }
 
         setInterval(fetchData, 60000); // Update every 1 minute
@@ -102,5 +151,6 @@
     </script>
 </body>
 </html>
+
 
 
