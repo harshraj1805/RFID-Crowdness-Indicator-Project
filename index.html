@@ -30,6 +30,11 @@
             font-weight: bold;
             color: white;
         }
+        #percentage-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
         #message {
             font-size: 18px;
             font-weight: bold;
@@ -44,7 +49,9 @@
         <div id="progress-bar"></div>
         <span id="progress-text">0%</span>
     </div>
-    
+
+    <p id="percentage-text">0% full</p>  <!-- Total percentage text -->
+
     <p id="message">Loading crowd info...</p>
 
     <canvas id="entryChart"></canvas>
@@ -90,10 +97,12 @@
 
             let progressBar = document.getElementById("progress-bar");
             let progressText = document.getElementById("progress-text");
+            let percentageText = document.getElementById("percentage-text");
             let message = document.getElementById("message");
 
             progressBar.style.width = percentage + "%";
             progressText.innerText = Math.round(percentage) + "%";
+            percentageText.innerText = Math.round(percentage) + "% full"; // Display total percentage
 
             // Change color based on occupancy level
             if (percentage < 50) {
@@ -139,4 +148,5 @@
     </script>
 </body>
 </html>
+
 
