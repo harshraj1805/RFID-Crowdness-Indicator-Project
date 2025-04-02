@@ -9,19 +9,20 @@
             font-family: Arial, sans-serif;
         }
         .progress-container {
-            width: 250px;
-            height: 20px;
-            border: 2px solid black;
-            border-radius: 10px;
+            width: 270px; /* Adjusted width */
+            height: 25px;
+            border: 3px solid black;
+            border-radius: 15px;
             margin: 10px auto;
-            overflow: hidden;
             background-color: #e0e0e0;
             position: relative;
+            padding: 3px; /* Padding added inside */
+            box-sizing: border-box;
         }
         .progress-bar {
             height: 100%;
             width: 0;
-            border-radius: 10px;
+            border-radius: 12px;
             transition: width 0.5s ease-in-out;
         }
         .progress-text {
@@ -49,17 +50,17 @@
     
     <div class="progress-container">
         <div class="progress-bar" id="progress-bar"></div>
-        <span class="progress-text" id="progress-text">0%</span>
+        <span class="progress-text" id="progress-text">0.00%</span>
     </div>
 
-    <p id="percentage-text">0% full</p>  <!-- Total percentage text -->
+    <p id="percentage-text">0.00% full</p>  <!-- Total percentage text -->
     <p id="message">Loading crowd info...</p>
 
     <canvas id="entryChart"></canvas>
 
     <script>
         const API_URL = "https://docs.google.com/spreadsheets/d/1srmt2AA5F_QCiBLcM7lAmo9pln2nhfrW4NnI6OrtfKk/gviz/tq?tqx=out:json"; // Replace with your actual URL
-        const MAX_PEOPLE = 20; // Changed maximum capacity to 20
+        const MAX_PEOPLE = 20; // Maximum people limit
 
         async function fetchData() {
             try {
@@ -95,6 +96,7 @@
         function updateProgressBar(occupancy) {
             let percentage = (occupancy / MAX_PEOPLE) * 100;
             percentage = Math.min(100, Math.max(0, percentage)); // Keep within range
+            let exactPercentage = percentage.toFixed(2) + "%"; // Show decimal values
 
             let progressBar = document.getElementById("progress-bar");
             let progressText = document.getElementById("progress-text");
@@ -102,8 +104,8 @@
             let message = document.getElementById("message");
 
             progressBar.style.width = percentage + "%";
-            progressText.innerText = Math.round(percentage) + "%";
-            percentageText.innerText = Math.round(percentage) + "% full"; // Display total percentage
+            progressText.innerText = exactPercentage;
+            percentageText.innerText = exactPercentage + " full"; // Display total percentage
 
             // Change color based on occupancy level
             if (percentage < 50) {
@@ -149,6 +151,7 @@
     </script>
 </body>
 </html>
+
 
 
 
