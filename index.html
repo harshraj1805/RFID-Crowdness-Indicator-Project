@@ -8,90 +8,68 @@
             text-align: center;
             font-family: Arial, sans-serif;
         }
-
-        /* Centered heading */
-        h1 {
-            text-align: center;
-        }
-
-        /* Progress bar container */
         #progress-container {
-            width: 280px; /* Slightly wider than text */
-            background-color: #ddd;
-            border-radius: 10px;
+            width: 300px;
+            height: 25px;
+            border: 2px solid black;
             margin: 10px auto;
-            height: 30px;
             position: relative;
-            border: 2px solid black; /* Black border */
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 5px;
         }
-
-        /* Progress bar */
         #progress-bar {
-            width: 0%;
             height: 100%;
-            border-radius: 10px;
+            width: 0;
+            background-color: green;
             transition: width 0.5s ease-in-out;
         }
-
-        /* Percentage beside progress bar */
         #progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
             font-weight: bold;
-            padding-left: 10px;
+            color: white;
         }
-
-        /* Message below the progress bar */
-        #status-message {
+        #message {
             font-size: 18px;
-            margin-top: 10px;
             font-weight: bold;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
-
-    <h1>Number of Peoples Inside: <span id="occupancy">Loading...</span></h1>
-
-    <!-- Progress Bar -->
-    <div style="display: flex; align-items: center; justify-content: center;">
-        <div id="progress-container">
-            <div id="progress-bar"></div>
-        </div>
-        <div id="progress-text">0%</div>
+    <h1>Number of Peoples Inside: <span id="occupancy">0</span></h1>
+    
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+        <span id="progress-text">0%</span>
     </div>
-
-    <!-- Status message below progress bar -->
-    <div id="status-message">Checking crowd status...</div>
+    
+    <p id="message">Loading crowd info...</p>
 
     <canvas id="entryChart"></canvas>
 
     <script>
-        const API_URL = "https://docs.google.com/spreadsheets/d/1srmt2AA5F_QCiBLcM7lAmo9pln2nhfrW4NnI6OrtfKk/gviz/tq?tqx=out:json";
-        const MAX_PEOPLE = 30; // Maximum people inside
-
-        let chartInstance = null; // Store Chart.js instance
+        const API_URL = "https://docs.google.com/spreadsheets/d/1srmt2AA5F_QCiBLcM7lAmo9pln2nhfrW4NnI6OrtfKk/gviz/tq?tqx=out:json"; // Replace with your actual URL
+        const MAX_PEOPLE = 30; // Maximum capacity
 
         async function fetchData() {
             try {
+                console.log("Fetching data...");
                 const response = await fetch(API_URL);
                 let text = await response.text();
-                let json = JSON.parse(text.substring(47, text.length - 2));
+                let json = JSON.parse(text.substring(47, text.length - 2)); // Google Sheets fix
 
                 let rows = json.table.rows;
                 let totalOccupancy = 0;
                 let timeIntervals = { "07:00-10:00": 0, "12:00-15:00": 0, "18:00-21:00": 0 };
 
                 rows.forEach(row => {
-                    if (!row.c[0] || !row.c[1]) return;  // Skip empty rows
-
-                    let time = row.c[0].v;  
-                    let value = parseInt(row.c[1].v); 
+                    let time = row.c[0].v;
+                    let value = parseInt(row.c[1].v);
                     totalOccupancy += value;
 
-                    let hours = parseInt(time.split(":")[0]); 
+                    let hours = parseInt(time.split(":")[0]);
                     if (hours >= 7 && hours < 10) timeIntervals["07:00-10:00"] += value;
                     if (hours >= 12 && hours < 15) timeIntervals["12:00-15:00"] += value;
                     if (hours >= 18 && hours < 21) timeIntervals["18:00-21:00"] += value;
@@ -100,33 +78,33 @@
                 document.getElementById("occupancy").innerText = totalOccupancy;
                 updateProgressBar(totalOccupancy);
                 updateChart(Object.keys(timeIntervals), Object.values(timeIntervals));
-
             } catch (error) {
                 console.error("Error fetching data:", error);
-                document.getElementById("occupancy").innerText = "Error Loading Data!";
+                document.getElementById("message").innerText = "Error fetching data. Check console!";
             }
         }
 
         function updateProgressBar(occupancy) {
-            let percentage = Math.min((occupancy / MAX_PEOPLE) * 100, 100); // Max 100%
+            let percentage = (occupancy / MAX_PEOPLE) * 100;
+            percentage = Math.min(100, Math.max(0, percentage)); // Keep within range
+
             let progressBar = document.getElementById("progress-bar");
             let progressText = document.getElementById("progress-text");
-            let statusMessage = document.getElementById("status-message");
+            let message = document.getElementById("message");
 
-            // Set bar width
             progressBar.style.width = percentage + "%";
             progressText.innerText = Math.round(percentage) + "%";
 
-            // Change bar color and status message
-            if (percentage <= 50) {
-                progressBar.style.backgroundColor = "green"; 
-                statusMessage.innerText = "Now you can go there, it's not much crowded!";
-            } else if (percentage <= 80) {
-                progressBar.style.backgroundColor = "yellow"; 
-                statusMessage.innerText = "It's getting crowded, proceed with caution.";
+            // Change color based on occupancy level
+            if (percentage < 50) {
+                progressBar.style.backgroundColor = "green";
+                message.innerText = "Now you can go there, it's not much crowded!";
+            } else if (percentage < 80) {
+                progressBar.style.backgroundColor = "yellow";
+                message.innerText = "Moderate crowd. You may consider going!";
             } else {
-                progressBar.style.backgroundColor = "red"; 
-                statusMessage.innerText = "Very crowded! Consider waiting.";
+                progressBar.style.backgroundColor = "red";
+                message.innerText = "Too crowded! Better to wait.";
             }
         }
 
@@ -135,34 +113,30 @@
             console.log("Chart Data:", data);
 
             const ctx = document.getElementById("entryChart").getContext("2d");
-
-            if (chartInstance) {
-                chartInstance.destroy(); // Remove old chart
-            }
-
-            chartInstance = new Chart(ctx, {
+            new Chart(ctx, {
                 type: "bar",
                 data: {
                     labels: labels,
                     datasets: [{
                         label: "Total Entries",
                         data: data,
-                        backgroundColor: "blue"
+                        backgroundColor: ["blue", "blue", "blue"]
                     }]
                 },
                 options: {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            suggestedMax: Math.max(...data) + 2
+                            suggestedMax: MAX_PEOPLE
                         }
                     }
                 }
             });
         }
 
-        setInterval(fetchData, 60000);
+        setInterval(fetchData, 60000); // Update every 1 minute
         fetchData();
     </script>
 </body>
 </html>
+
